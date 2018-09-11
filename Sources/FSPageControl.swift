@@ -106,26 +106,39 @@ open class FSPageControl: UIControl {
         
         let diameter = self.itemSpacing
         let spacing = self.interitemSpacing
+
+        let normalWidth = self.paths[.normal]?.bounds.width ?? 0
+        let selectedWidth = self.paths[.selected]?.bounds.width ?? 0
+        let addingWidth = max(normalWidth, selectedWidth) / 2
+
         var x: CGFloat = {
             switch self.contentHorizontalAlignment {
             case .left, .leading:
                 return 0
             case .center, .fill:
                 let midX = self.contentView.bounds.midX
-                let amplitude = CGFloat(self.numberOfPages/2) * diameter + spacing*CGFloat((self.numberOfPages-1)/2)
+                let amplitude = CGFloat(self.numberOfPages/2) * diameter + spacing*CGFloat((self.numberOfPages-1)/2) + addingWidth
                 return midX - amplitude
             case .right, .trailing:
-                let contentWidth = diameter*CGFloat(self.numberOfPages) + CGFloat(self.numberOfPages-1)*spacing
+                let contentWidth = diameter*CGFloat(self.numberOfPages) + CGFloat(self.numberOfPages-1)*spacing + addingWidth
                 return contentView.frame.width - contentWidth
             }
         }()
         for (index,value) in self.indicatorLayers.enumerated() {
             let state: UIControlState = (index == self.currentPage) ? .selected : .normal
             let image = self.images[state]
-            let size = image?.size ?? CGSize(width: diameter, height: diameter)
-            let origin = CGPoint(x: x - (size.width-diameter)*0.5, y: self.contentView.bounds.midY-size.height*0.5)
+            let path = self.paths[state]
+            let size: CGSize
+            if let image = image {
+                size = image.size
+            } else if let path = path {
+                size = path.bounds.size
+            } else {
+                size = CGSize(width: diameter, height: diameter)
+            }
+            let origin = CGPoint(x: x, y: self.contentView.bounds.midY-size.height*0.5)
             value.frame = CGRect(origin: origin, size: size)
-            x = x + spacing + diameter
+            x = x + spacing + size.width
         }
         
     }
