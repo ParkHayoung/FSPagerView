@@ -23,6 +23,7 @@ open class FSPageControl: UIControl {
     @IBInspectable
     open var currentPage: Int = 0 {
         didSet {
+            guard needsPreventUpdate == false else { return }
             self.setNeedsUpdateIndicators()
         }
     }
@@ -74,7 +75,8 @@ open class FSPageControl: UIControl {
     internal var transforms: [UIControlState: CGAffineTransform] = [:]
     
     fileprivate weak var contentView: UIView!
-    
+
+    fileprivate var needsPreventUpdate = false
     fileprivate var needsUpdateIndicators = false
     fileprivate var needsCreateIndicators = false
     fileprivate var indicatorLayers = [CAShapeLayer]()
@@ -213,6 +215,53 @@ open class FSPageControl: UIControl {
         self.paths[state] = path
         self.setNeedsUpdateIndicators()
     }
+
+    /// Implement in pager view delegate method (pagerViewDidScroll:), if you want to interactive page indicators.
+    ///
+    /// - Parameters:
+    ///   - with: pagerView
+    @objc(scroll:)
+    open func didScroll(with pagerView: FSPagerView) {
+        let index = Int(pagerView.collectionView.contentOffset.x / pagerView.bounds.width)
+        let rate = (pagerView.collectionView.contentOffset.x - pagerView.bounds.width * CGFloat(index)) / pagerView.bounds.width
+
+        let normalWidth = self.paths[.normal]?.bounds.width ?? self.itemSpacing
+        let normalHeight = self.paths[.normal]?.bounds.height ?? self.itemSpacing
+        let selectedWidth = self.paths[.selected]?.bounds.width ?? self.itemSpacing
+        let selectedHeight = self.paths[.selected]?.bounds.height ?? self.itemSpacing
+        let diffWidth = selectedWidth - normalWidth
+        let diffHeight = selectedHeight - normalHeight
+
+        let normalColor = self.fillColors[.normal] ?? .white
+        let selectedColor = self.fillColors[.selected] ?? .gray
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        let currentLayer = self.indicatorLayers[index]
+        let currentWidth = normalWidth + diffWidth * (1-rate)
+        let currentHeight = normalHeight + diffHeight * (1-rate)
+        currentLayer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: currentWidth, height: currentHeight), cornerRadius: 15).cgPath
+        currentLayer.frame = CGRect(x: currentLayer.frame.origin.x, y: self.contentView.bounds.midY-currentHeight*0.5, width: currentWidth, height: currentLayer.bounds.height)
+        currentLayer.fillColor = normalColor.middleColor(betweenAnother: selectedColor, withRate: 1-rate).cgColor
+
+        if self.indicatorLayers.count > index + 1 {
+            let nextLayer = self.indicatorLayers[index + 1]
+            let nextWidth = normalWidth + diffWidth * rate
+            let nextHeight = normalHeight + diffHeight * rate
+            nextLayer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: nextWidth, height: nextHeight), cornerRadius: 15).cgPath
+            nextLayer.frame = CGRect(x: currentLayer.frame.maxX + self.interitemSpacing, y: self.contentView.bounds.midY-nextHeight*0.5, width: nextWidth, height: nextHeight)
+            nextLayer.fillColor = normalColor.middleColor(betweenAnother: selectedColor, withRate: rate).cgColor
+        }
+
+        CATransaction.commit()
+
+        if (pagerView.collectionView.contentOffset.x / pagerView.bounds.width).truncatingRemainder(dividingBy: CGFloat(index)) == 0 || pagerView.collectionView.contentOffset.x == 0 {
+            self.needsPreventUpdate = true
+            self.currentPage = index
+            self.needsPreventUpdate = false
+        }
+    }
     
     // MARK: - Private functions
     
@@ -319,3 +368,25 @@ extension UIControlState: Hashable {
     }
 }
 
+fileprivate extension UIColor {
+
+    func middleColor(betweenAnother another: UIColor, withRate rate: CGFloat) -> UIColor {
+        guard let components = cgColor.components, let anotherComponents = another.cgColor.components else { return self }
+        let originRed = cgColor.numberOfComponents == 4 ? components[0] : components[0]
+        let originGreen = cgColor.numberOfComponents == 4 ? components[1] : components[0]
+        let originBlue = cgColor.numberOfComponents == 4 ? components[2] : components[0]
+        let originAlpha = cgColor.numberOfComponents == 4 ? components[3] : components[1]
+        let anotherRed = another.cgColor.numberOfComponents == 4 ? anotherComponents[0] : anotherComponents[0]
+        let anotherGreen = another.cgColor.numberOfComponents == 4 ? anotherComponents[1] : anotherComponents[0]
+        let anotherBlue = another.cgColor.numberOfComponents == 4 ? anotherComponents[2] : anotherComponents[0]
+        let anotherAlpha = another.cgColor.numberOfComponents == 4 ? anotherComponents[3] : anotherComponents[1]
+
+        let red = anotherRed + rate * (originRed - anotherRed)
+        let green = anotherGreen + rate * (originGreen - anotherGreen)
+        let blue = anotherBlue + rate * (originBlue - anotherBlue)
+        let alpha = anotherAlpha + rate * (originAlpha - anotherAlpha)
+
+        return UIColor(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+}
