@@ -220,10 +220,11 @@ open class FSPageControl: UIControl {
     ///
     /// - Parameters:
     ///   - with: pagerView
-    @objc(scroll:)
+    @objc(didScrollWithPagerView:)
     open func didScroll(with pagerView: FSPagerView) {
-        let index = Int(pagerView.collectionView.contentOffset.x / pagerView.bounds.width)
-        let rate = (pagerView.collectionView.contentOffset.x - pagerView.bounds.width * CGFloat(index)) / pagerView.bounds.width
+        let pageWidth = pagerView.itemSize.width + pagerView.interitemSpacing
+        let index = Int(pagerView.collectionView.contentOffset.x / pageWidth)
+        let rate = (pagerView.collectionView.contentOffset.x - pageWidth * CGFloat(index)) / pageWidth
 
         let normalWidth = self.paths[.normal]?.bounds.width ?? self.itemSpacing
         let normalHeight = self.paths[.normal]?.bounds.height ?? self.itemSpacing
@@ -256,7 +257,7 @@ open class FSPageControl: UIControl {
 
         CATransaction.commit()
 
-        if (pagerView.collectionView.contentOffset.x / pagerView.bounds.width).truncatingRemainder(dividingBy: CGFloat(index)) == 0 || pagerView.collectionView.contentOffset.x == 0 {
+        if (pagerView.collectionView.contentOffset.x / pageWidth).truncatingRemainder(dividingBy: CGFloat(index)) == 0 || pagerView.collectionView.contentOffset.x == 0 {
             self.needsPreventUpdate = true
             self.currentPage = index
             self.needsPreventUpdate = false
