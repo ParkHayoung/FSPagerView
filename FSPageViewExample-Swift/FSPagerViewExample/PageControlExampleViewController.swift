@@ -11,9 +11,11 @@ import UIKit
 class PageControlExampleViewController: UIViewController,UITableViewDataSource,UITableViewDelegate,FSPagerViewDataSource,FSPagerViewDelegate {
     
     fileprivate let imageNames = ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg","7.jpg"]
-    fileprivate let pageControlStyles = ["Default", "Ring", "UIImage", "UIBezierPath - Star", "UIBezierPath - Heart"]
+    fileprivate let pageControlStyles = ["Default", "Interaction", "Ring", "UIImage", "UIBezierPath - Star", "UIBezierPath - Heart"]
     fileprivate let pageControlAlignments = ["Right", "Center", "Left"]
     fileprivate let sectionTitles = ["Style", "Item Spacing", "Interitem Spacing", "Horizontal Alignment"]
+
+    var isInteractive = false
     
     fileprivate var styleIndex = 0 {
         didSet {
@@ -26,27 +28,32 @@ class PageControlExampleViewController: UIViewController,UITableViewDataSource,U
             self.pageControl.setImage(nil, for: .selected)
             self.pageControl.setPath(nil, for: .normal)
             self.pageControl.setPath(nil, for: .selected)
+            self.isInteractive = false
             switch self.styleIndex {
             case 0:
                 // Default
                 break
             case 1:
+                self.pageControl.setPath(UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: 42, height: 20),
+                                                      cornerRadius: CGFloat(15)), for: .selected)
+                self.isInteractive = true
+            case 2:
                 // Ring
                 self.pageControl.setStrokeColor(.green, for: .normal)
                 self.pageControl.setStrokeColor(.green, for: .selected)
                 self.pageControl.setFillColor(.green, for: .selected)
-            case 2:
+            case 3:
                 // Image
                 self.pageControl.setImage(UIImage(named:"icon_footprint"), for: .normal)
                 self.pageControl.setImage(UIImage(named:"icon_cat"), for: .selected)
-            case 3:
+            case 4:
                 // UIBezierPath - Star
                 self.pageControl.setStrokeColor(.yellow, for: .normal)
                 self.pageControl.setStrokeColor(.yellow, for: .selected)
                 self.pageControl.setFillColor(.yellow, for: .selected)
                 self.pageControl.setPath(self.starPath, for: .normal)
                 self.pageControl.setPath(self.starPath, for: .selected)
-            case 4:
+            case 5:
                 // UIBezierPath - Heart
                 let color = UIColor(red: 255/255.0, green: 102/255.0, blue: 255/255.0, alpha: 1.0)
                 self.pageControl.setStrokeColor(color, for: .normal)
@@ -229,6 +236,10 @@ class PageControlExampleViewController: UIViewController,UITableViewDataSource,U
     // MARK:- FSPagerViewDelegate
     
     func pagerViewDidScroll(_ pagerView: FSPagerView) {
+        guard self.isInteractive == false else {
+            self.pageControl.didScroll(with: pagerView)
+            return
+        }
         guard self.pageControl.currentPage != pagerView.currentIndex else {
             return
         }
