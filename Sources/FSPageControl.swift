@@ -222,7 +222,8 @@ open class FSPageControl: UIControl {
     ///   - with: pagerView
     @objc(didScrollWithPagerView:)
     open func didScroll(with pagerView: FSPagerView) {
-        let pageWidth = pagerView.itemSize.width + pagerView.interitemSpacing
+        let itemWidth = pagerView.itemSize.width > 0 ? pagerView.itemSize.width : pagerView.bounds.width
+        let pageWidth = itemWidth + pagerView.interitemSpacing
         let index = Int(pagerView.collectionView.contentOffset.x / pageWidth)
         let rate = (pagerView.collectionView.contentOffset.x - pageWidth * CGFloat(index)) / pageWidth
 
@@ -233,8 +234,8 @@ open class FSPageControl: UIControl {
         let diffWidth = selectedWidth - normalWidth
         let diffHeight = selectedHeight - normalHeight
 
-        let normalColor = self.fillColors[.normal] ?? .white
-        let selectedColor = self.fillColors[.selected] ?? .gray
+        let normalColor = self.fillColors[.normal] ?? .gray
+        let selectedColor = self.fillColors[.selected] ?? .white
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -244,7 +245,7 @@ open class FSPageControl: UIControl {
         let currentHeight = normalHeight + diffHeight * (1-rate)
         currentLayer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: currentWidth, height: currentHeight), cornerRadius: 15).cgPath
         currentLayer.frame = CGRect(x: currentLayer.frame.origin.x, y: self.contentView.bounds.midY-currentHeight*0.5, width: currentWidth, height: currentLayer.bounds.height)
-        currentLayer.fillColor = normalColor.middleColor(betweenAnother: selectedColor, withRate: 1-rate).cgColor
+        currentLayer.fillColor = selectedColor.middleColor(betweenAnother: normalColor, withRate: 1-rate).cgColor
 
         if self.indicatorLayers.count > index + 1 {
             let nextLayer = self.indicatorLayers[index + 1]
@@ -252,7 +253,7 @@ open class FSPageControl: UIControl {
             let nextHeight = normalHeight + diffHeight * rate
             nextLayer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: nextWidth, height: nextHeight), cornerRadius: 15).cgPath
             nextLayer.frame = CGRect(x: currentLayer.frame.maxX + self.interitemSpacing, y: self.contentView.bounds.midY-nextHeight*0.5, width: nextWidth, height: nextHeight)
-            nextLayer.fillColor = normalColor.middleColor(betweenAnother: selectedColor, withRate: rate).cgColor
+            nextLayer.fillColor = selectedColor.middleColor(betweenAnother: normalColor, withRate: rate).cgColor
         }
 
         CATransaction.commit()
@@ -261,6 +262,35 @@ open class FSPageControl: UIControl {
             self.needsPreventUpdate = true
             self.currentPage = index
             self.needsPreventUpdate = false
+        }
+
+        let diameter = self.itemSpacing
+        let spacing = self.interitemSpacing
+        let addingWidth = max(normalWidth, selectedWidth) / 2
+
+        for (idx, layer) in self.indicatorLayers.enumerated() where idx != index && idx != index + 1 {
+            var originX: CGFloat = {
+                switch self.contentHorizontalAlignment {
+                case .left, .leading:
+                    return 0
+                case .center, .fill:
+                    let midX = self.contentView.bounds.midX
+                    let amplitude = CGFloat(self.numberOfPages/2) * diameter + spacing*CGFloat((self.numberOfPages-1)/2) + addingWidth
+                    return midX - amplitude
+                case .right, .trailing:
+                    let contentWidth = diameter*CGFloat(self.numberOfPages) + CGFloat(self.numberOfPages-1)*spacing + addingWidth
+                    return contentView.frame.width - contentWidth
+                }
+            }()
+            if idx > 0 {
+                originX = indicatorLayers[idx-1].frame.maxX + self.interitemSpacing
+            }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: normalWidth, height: normalHeight), cornerRadius: 15).cgPath
+            layer.frame = CGRect(x: originX, y: self.contentView.bounds.midY-normalHeight*0.5, width: normalWidth, height: normalHeight)
+            currentLayer.fillColor = normalColor.cgColor
+            CATransaction.commit()
         }
     }
     
