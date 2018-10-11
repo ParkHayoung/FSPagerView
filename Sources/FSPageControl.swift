@@ -222,6 +222,8 @@ open class FSPageControl: UIControl {
     ///   - with: pagerView
     @objc(didScrollWithPagerView:)
     open func didScroll(with pagerView: FSPagerView) {
+        guard pagerView.collectionView.contentOffset.x >= 0 else { return }
+        guard pagerView.collectionView.contentOffset.x + pagerView.bounds.width <= pagerView.collectionView.contentSize.width else { return }
         let itemWidth = pagerView.itemSize.width > 0 ? pagerView.itemSize.width : pagerView.bounds.width
         let pageWidth = itemWidth + pagerView.interitemSpacing
         let index = Int(pagerView.collectionView.contentOffset.x / pageWidth)
@@ -289,7 +291,7 @@ open class FSPageControl: UIControl {
             CATransaction.setDisableActions(true)
             layer.path = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: normalWidth, height: normalHeight), cornerRadius: 15).cgPath
             layer.frame = CGRect(x: originX, y: self.contentView.bounds.midY-normalHeight*0.5, width: normalWidth, height: normalHeight)
-            currentLayer.fillColor = normalColor.cgColor
+            layer.fillColor = normalColor.cgColor
             CATransaction.commit()
         }
     }
